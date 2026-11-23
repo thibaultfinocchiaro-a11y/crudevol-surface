@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Explorer et comprendre les surfaces de volatilité implicite Brent et WTI.">
+  <title>CrudeVol Surface</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Aller au contenu</a>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Navigation principale">
+      <div class="brand"><span class="brand-mark">CV</span><div><strong>CrudeVol</strong><small>Surface Lab</small></div></div>
+      <nav>
+        <button class="nav-item active" data-view="overview"><span>◫</span> Vue d’ensemble</button>
+        <button class="nav-item" data-view="surface"><span>⌁</span> Surface implicite</button>
+        <button class="nav-item" data-view="compare"><span>≋</span> Brent vs WTI</button>
+        <button class="nav-item" data-view="scanner"><span>◎</span> Scanner relative value</button>
+        <button class="nav-item" data-view="learn"><span>?</span> Comprendre</button>
+      </nav>
+      <div class="sidebar-note">
+        <span class="demo-dot"></span>
+        <div><strong>Mode démonstration</strong><small>Données synthétiques</small></div>
+      </div>
+      <button class="glossary-button open-glossary">Ouvrir le lexique</button>
+    </aside>
+
+    <main id="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">OPTIONS SUR FUTURES · RECHERCHE QUANTITATIVE</p>
+          <h1 id="pageTitle">Vue d’ensemble</h1>
+        </div>
+        <div class="top-actions">
+          <label>Marché<select id="assetSelect"><option value="WTI">WTI</option><option value="Brent">Brent</option></select></label>
+          <label>Date<select id="dateSelect"><option>18 nov. 2026</option><option>17 nov. 2026</option><option>16 nov. 2026</option></select></label>
+          <button class="icon-button" id="toggleHelp" aria-label="Afficher les explications">?</button>
+        </div>
+      </header>
+
+      <section class="view active" id="overviewView">
+        <div class="notice"><span>i</span><p><strong>Terrain d’entraînement.</strong> Les chiffres de cette version sont synthétiques : ils servent à comprendre la méthode, pas à prendre une position réelle.</p></div>
+        <div class="kpi-grid">
+          <article class="kpi"><div class="kpi-head"><span>Volatilité ATM · 1 mois</span><button class="term" data-term="atm">?</button></div><strong id="atmKpi">31,8 %</strong><small><b class="up">+1,7 pt</b> depuis hier</small></article>
+          <article class="kpi"><div class="kpi-head"><span>Skew 25Δ</span><button class="term" data-term="skew">?</button></div><strong id="skewKpi">−4,2 pts</strong><small>Protection baissière plus chère</small></article>
+          <article class="kpi"><div class="kpi-head"><span>Structure temporelle</span><button class="term" data-term="termStructure">?</button></div><strong id="termKpi">Inversée</strong><small>La volatilité courte est supérieure</small></article>
+          <article class="kpi"><div class="kpi-head"><span>Qualité des données</span><button class="term" data-term="dataQuality">?</button></div><strong>92 / 100</strong><small><b class="good">Bonne</b> · 48 options liquides</small></article>
+        </div>
+
+        <div class="dashboard-grid">
+          <article class="panel surface-panel">
+            <div class="panel-head"><div><p class="panel-kicker">CARTE DU MARCHÉ</p><h2>Surface de volatilité implicite</h2></div><div class="segmented" role="group" aria-label="Mode d’affichage"><button class="active" data-surface-mode="heat">Carte</button><button data-surface-mode="mesh">3D</button></div></div>
+            <p class="plain-explain">Chaque case représente le niveau de volatilité anticipé pour un prix d’exercice et une échéance. Plus la couleur est chaude, plus le mouvement attendu est important.</p>
+            <div class="surface-wrap"><canvas id="surfaceCanvas" aria-label="Surface de volatilité implicite interactive"></canvas><div id="chartTooltip" class="chart-tooltip" hidden></div></div>
+            <div class="legend"><span>Vol. faible</span><div class="gradient"></div><span>Vol. élevée</span></div>
+          </article>
+
+          <article class="panel term-panel">
+            <div class="panel-head"><div><p class="panel-kicker">PAR MATURITÉ</p><h2>Volatilité au centre</h2></div><button class="term" data-term="maturity">?</button></div>
+            <p class="plain-explain">Ce graphique compare le niveau de volatilité des options proches du prix actuel selon leur date d’expiration.</p>
+            <svg id="termChart" viewBox="0 0 440 250" role="img" aria-label="Structure temporelle de volatilité"></svg>
+            <div class="insight"><span>Lecture</span><p id="termInsight">Le marché anticipe davantage de mouvement à court terme, puis une normalisation progressive.</p></div>
+          </article>
+        </div>
+
+        <div class="lower-grid">
+          <article class="panel"><div class="panel-head"><div><p class="panel-kicker">SOURIRE DE VOLATILITÉ</p><h2>Échéance 1 mois</h2></div><button class="term" data-term="smile">?</button></div><p class="plain-explain">Les options éloignées du prix actuel n’ont pas toutes la même volatilité implicite. La courbe montre cette différence.</p><svg id="smileChart" viewBox="0 0 620 260" role="img" aria-label="Smile de volatilité"></svg></article>
+          <article class="panel market-reading"><p class="panel-kicker">SYNTHÈSE AUTOMATIQUE</p><h2>Ce qu’il faut retenir</h2><div class="reading-item"><span class="reading-number">01</span><p><strong>Volatilité courte élevée</strong>Le risque perçu est concentré sur les prochaines semaines.</p></div><div class="reading-item"><span class="reading-number">02</span><p><strong>Asymétrie baissière</strong>Les protections contre une baisse du pétrole sont plus demandées.</p></div><div class="reading-item"><span class="reading-number">03</span><p><strong>Pas d’arbitrage évident</strong>La surface lissée respecte les principaux contrôles de cohérence.</p></div></article>
+        </div>
+      </section>
+
+      <section class="view" id="surfaceView">
+        <div class="workspace-grid">
+          <aside class="control-panel panel">
+            <p class="panel-kicker">PARAMÈTRES</p><h2>Construire la surface</h2>
+            <label>Modèle de lissage<button class="term" data-term="svi">?</button><select id="modelSelect"><option>SVI</option><option>Interpolation spline</option><option>SABR</option></select></label>
+            <label>Coordonnée horizontale<select id="axisSelect"><option value="moneyness">Moneyness</option><option value="strike">Strike</option><option value="delta">Delta</option></select></label>
+            <label>Prix utilisé<select id="priceSelect"><option>Milieu bid–ask</option><option>Bid</option><option>Ask</option></select></label>
+            <label>Liquidité minimale<input id="liquidityRange" type="range" min="0" max="80" value="25"><span class="range-value" id="liquidityValue">25 contrats</span></label>
+            <button class="primary" id="recalibrate">Recalibrer la surface</button>
+            <div class="mini-status"><span></span><p><strong>Calibration stable</strong>46 points retenus sur 54</p></div>
+          </aside>
+          <article class="panel large-surface"><div class="panel-head"><div><p class="panel-kicker">SURFACE CALIBRÉE</p><h2 id="surfaceTitle">WTI · Modèle SVI</h2></div><div class="metric-chip">Erreur moyenne <strong id="rmseValue">0,42 pt</strong></div></div><p class="plain-explain">Le modèle transforme des cotations dispersées en une surface continue. Les points blancs sont observés ; les zones colorées entre les points sont estimées.</p><div class="surface-wrap expanded"><canvas id="detailSurfaceCanvas"></canvas><div id="detailTooltip" class="chart-tooltip" hidden></div></div><div class="check-row"><span class="check ok">✓ Prix décroissants avec le strike</span><span class="check ok">✓ Convexité respectée</span><span class="check ok">✓ Pas d’arbitrage calendaire</span></div></article>
+        </div>
+      </section>
+
+      <section class="view" id="compareView">
+        <div class="section-intro"><p class="panel-kicker">COMPARAISON RELATIVE</p><h2>Où Brent et WTI racontent-ils une histoire différente ?</h2><p>Une différence de volatilité n’est pas automatiquement une opportunité : elle peut rémunérer des risques physiques ou géographiques distincts.</p></div>
+        <div class="compare-kpis"><article><span>ATM 1 mois</span><strong>Brent 29,6 %</strong><small>WTI 31,8 %</small></article><article><span>Écart Brent − WTI</span><strong class="negative">−2,2 pts</strong><small>Z-score : −1,1</small></article><article><span>Corrélation 60 jours</span><strong>0,82</strong><small>Élevée, mais imparfaite</small></article></div>
+        <article class="panel"><div class="panel-head"><div><p class="panel-kicker">HEATMAP DE DIFFÉRENCE</p><h2>Volatilité Brent moins volatilité WTI</h2></div><button class="term" data-term="zscore">?</button></div><p class="plain-explain">Le bleu indique que le Brent est moins volatil que le WTI ; le corail indique l’inverse.</p><div class="surface-wrap compare"><canvas id="compareCanvas"></canvas><div id="compareTooltip" class="chart-tooltip" hidden></div></div></article>
+      </section>
+
+      <section class="view" id="scannerView">
+        <div class="section-intro"><p class="panel-kicker">RELATIVE VALUE</p><h2>Écarts entre cotations et surface théorique</h2><p>Le scanner classe les options selon leur écart au modèle. Un signal n’est conservé que s’il dépasse l’incertitude du modèle et le coût du spread.</p></div>
+        <div class="scanner-toolbar"><div class="search"><span>⌕</span><input id="scannerSearch" placeholder="Rechercher une échéance ou un strike"></div><label><input id="liquidOnly" type="checkbox" checked> Options liquides uniquement</label><button class="secondary" id="exportCsv">Exporter CSV</button></div>
+        <div class="table-wrap"><table><thead><tr><th>Contrat</th><th>Échéance</th><th>Strike</th><th>IV marché <button class="term" data-term="iv">?</button></th><th>IV modèle</th><th>Écart</th><th>Z-score <button class="term" data-term="zscore">?</button></th><th>Lecture</th></tr></thead><tbody id="scannerBody"></tbody></table></div>
+      </section>
+
+      <section class="view" id="learnView">
+        <div class="learn-hero"><p class="panel-kicker">PARCOURS GUIDÉ</p><h2>Comprendre une surface en cinq minutes</h2><p>Une lecture progressive, sans prérequis en options.</p><button class="secondary open-glossary">Consulter le lexique complet</button></div>
+        <div class="lesson-grid">
+          <article><span>1</span><h3>Le marché donne des prix</h3><p>Chaque option a un prix d’achat et un prix de vente. Ces prix reflètent notamment le mouvement futur attendu.</p></article>
+          <article><span>2</span><h3>On traduit le prix en volatilité</h3><p>La volatilité implicite est le niveau de mouvement qui permet au modèle de retrouver le prix observé.</p></article>
+          <article><span>3</span><h3>On organise les points</h3><p>Les options sont rangées par prix d’exercice et par échéance. L’ensemble forme une surface.</p></article>
+          <article><span>4</span><h3>On lisse sans inventer d’arbitrage</h3><p>Un modèle comme SVI relie les points tout en cherchant à respecter des règles économiques de cohérence.</p></article>
+          <article><span>5</span><h3>On compare, puis on décide</h3><p>Les écarts au modèle peuvent devenir des pistes de recherche, après prise en compte du spread, de la liquidité et du risque.</p></article>
+        </div>
+        <article class="panel formula-card"><div><p class="panel-kicker">IDÉE CENTRALE</p><h2>Prix observé → volatilité implicite</h2><p>On connaît le prix de l’option, le prix du future, le strike et le temps restant. On cherche la volatilité qui rend le modèle cohérent avec ce prix.</p></div><div class="formula">Prix marché = Black–76 (F, K, T, r, <b>σ</b>)<small>σ est l’inconnue : la volatilité implicite.</small></div></article>
+      </section>
+    </main>
+  </div>
+
+  <aside class="help-drawer" id="helpDrawer" aria-hidden="true"><button class="close" id="closeHelp" aria-label="Fermer">×</button><p class="panel-kicker">AIDE À LA LECTURE</p><h2 id="helpTitle">Vue d’ensemble</h2><p id="helpText">Commencez par le niveau ATM, puis regardez comment la volatilité varie selon le strike et la maturité. Une surface utile doit être lisse, mais aussi cohérente avec les prix observés.</p><div class="help-tip"><strong>Conseil entretien</strong><p>Expliquez toujours la décision économique avant la technique de calibration.</p></div></aside>
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
+
+  <dialog id="glossaryDialog"><div class="dialog-head"><div><p class="panel-kicker">LEXIQUE ACCESSIBLE</p><h2>Les mots essentiels</h2></div><button id="closeGlossary" aria-label="Fermer">×</button></div><div class="glossary-search"><input id="glossarySearch" placeholder="Rechercher un terme…"></div><div class="glossary-list" id="glossaryList"></div></dialog>
+  <div class="term-popover" id="termPopover" role="tooltip" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>
