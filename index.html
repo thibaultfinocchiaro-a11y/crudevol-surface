@@ -6,6 +6,7 @@
   <meta name="description" content="Explorer et comprendre les surfaces de volatilité implicite Brent et WTI.">
   <title>CrudeVol Surface</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="history.css">
 </head>
 <body>
   <a class="skip-link" href="#main">Aller au contenu</a>
@@ -14,6 +15,7 @@
       <div class="brand"><span class="brand-mark">CV</span><div><strong>CrudeVol</strong><small>Surface Lab</small></div></div>
       <nav>
         <button class="nav-item active" data-view="overview"><span>◫</span> Vue d’ensemble</button>
+        <button class="nav-item" data-view="history"><span>↗</span> Historique réel</button>
         <button class="nav-item" data-view="surface"><span>⌁</span> Surface implicite</button>
         <button class="nav-item" data-view="compare"><span>≋</span> Brent vs WTI</button>
         <button class="nav-item" data-view="scanner"><span>◎</span> Scanner relative value</button>
@@ -21,7 +23,7 @@
       </nav>
       <div class="sidebar-note">
         <span class="demo-dot"></span>
-        <div><strong>Mode démonstration</strong><small>Données synthétiques</small></div>
+        <div><strong>Mode hybride</strong><small>Historique réel · surface illustrative</small></div>
       </div>
       <button class="glossary-button open-glossary">Ouvrir le lexique</button>
     </aside>
@@ -40,7 +42,7 @@
       </header>
 
       <section class="view active" id="overviewView">
-        <div class="notice"><span>i</span><p><strong>Terrain d’entraînement.</strong> Les chiffres de cette version sont synthétiques : ils servent à comprendre la méthode, pas à prendre une position réelle.</p></div>
+        <div class="notice"><span>i</span><p><strong>Deux niveaux de données.</strong> L’onglet « Historique réel » utilise les séries EIA/FRED depuis 1986–1987. Les surfaces implicites restent illustratives tant qu’aucune chaîne d’options CME/ICE n’est connectée.</p></div>
         <div class="kpi-grid">
           <article class="kpi"><div class="kpi-head"><span>Volatilité ATM · 1 mois</span><button class="term" data-term="atm">?</button></div><strong id="atmKpi">31,8 %</strong><small><b class="up">+1,7 pt</b> depuis hier</small></article>
           <article class="kpi"><div class="kpi-head"><span>Skew 25Δ</span><button class="term" data-term="skew">?</button></div><strong id="skewKpi">−4,2 pts</strong><small>Protection baissière plus chère</small></article>
@@ -70,7 +72,27 @@
         </div>
       </section>
 
+      <section class="view" id="historyView">
+        <div class="real-data-banner"><span class="live-dot"></span><div><strong>Données réelles · EIA via FRED</strong><small id="historyCoverage">Chargement de l’historique…</small></div><span class="source-badge">QUOTIDIEN</span></div>
+        <div class="history-kpis">
+          <article class="kpi"><div class="kpi-head"><span>Profondeur historique</span><button class="term" data-term="sample">?</button></div><strong id="histYears">—</strong><small id="histDates">—</small></article>
+          <article class="kpi"><div class="kpi-head"><span>Dernier prix spot</span><button class="term" data-term="spot">?</button></div><strong id="histPrice">—</strong><small id="histObs">—</small></article>
+          <article class="kpi"><div class="kpi-head"><span>Volatilité réalisée 20 j</span><button class="term" data-term="realizedVol">?</button></div><strong id="histCurrentVol">—</strong><small>Annualisée sur les rendements observés</small></article>
+          <article class="kpi forecast-kpi"><div class="kpi-head"><span>Prévision à 5 jours</span><button class="term" data-term="har">?</button></div><strong id="histForecast">—</strong><small id="histInterval">Intervalle 80 % : —</small></article>
+        </div>
+        <div class="history-grid">
+          <article class="panel history-chart-panel"><div class="panel-head"><div><p class="panel-kicker">PRIX ET VOLATILITÉ RÉALISÉE</p><h2 id="historyChartTitle">Historique WTI</h2></div><div class="chart-key"><span class="key-price">Prix</span><span class="key-vol">Vol. 20 j</span></div></div><p class="plain-explain">Le prix est affiché en gris et la volatilité réalisée en vert. Passez sur le graphique pour lire une observation.</p><div class="history-chart-wrap"><canvas id="historyCanvas" aria-label="Historique du prix et de la volatilité réalisée"></canvas><div id="historyTooltip" class="chart-tooltip" hidden></div></div></article>
+          <article class="panel validation-panel"><p class="panel-kicker">VALIDATION HORS ÉCHANTILLON</p><h2>Le modèle fait-il mieux qu’un repère simple ?</h2><p class="plain-explain">La période de test n’est pas utilisée pour estimer les coefficients. C’est le contrôle le plus important contre un modèle qui mémorise le passé.</p><div id="validationPeriod" class="test-period">—</div><table class="validation-table"><thead><tr><th>Modèle</th><th>MAE ↓</th><th>RMSE ↓</th><th>Corr. ↑</th></tr></thead><tbody id="validationBody"></tbody></table><p class="metric-note">MAE et RMSE sont des erreurs en points de volatilité : plus elles sont basses, mieux c’est.</p></article>
+        </div>
+        <div class="history-bottom">
+          <article class="panel"><p class="panel-kicker">MÉTHODE</p><h2>Prévision HAR enrichie</h2><p>Le modèle combine le mouvement observé sur 5, 22 et 66 jours. Il estime la volatilité qui sera effectivement réalisée pendant les cinq prochains jours.</p><div class="method-flow"><span>Prix quotidiens</span><b>→</b><span>Rendements</span><b>→</b><span>Vol. 5 / 22 / 66 j</span><b>→</b><span>Prévision 5 j</span></div></article>
+          <article class="panel limitation"><p class="panel-kicker">LIMITE À DIRE EN ENTRETIEN</p><h2>Réalisée ≠ implicite</h2><p>Cette prévision répond à « combien le marché bougera-t-il ? ». Une surface implicite répond à « quelle volatilité est intégrée dans chaque prix d’option ? ». Pour une vraie surface historique, il faut des chaînes d’options CME/ICE horodatées.</p><a href="https://fred.stlouisfed.org/series/DCOILWTICO" target="_blank" rel="noopener">Source WTI</a><a href="https://fred.stlouisfed.org/series/DCOILBRENTEU" target="_blank" rel="noopener">Source Brent</a></article>
+        </div>
+        <div class="history-error" id="historyError" hidden>Les données historiques n’ont pas pu être chargées. Rechargez la page.</div>
+      </section>
+
       <section class="view" id="surfaceView">
+        <div class="illustrative-banner">Surface illustrative — aucune chaîne d’options CME/ICE n’est connectée.</div>
         <div class="workspace-grid">
           <aside class="control-panel panel">
             <p class="panel-kicker">PARAMÈTRES</p><h2>Construire la surface</h2>

@@ -12,10 +12,17 @@ const TERMS={
   bidask:{title:"Spread bid–ask",text:"Écart entre le meilleur prix d’achat et le meilleur prix de vente. C’est un coût important de transaction."},
   vega:{title:"Vega",text:"Variation approximative du prix d’une option lorsque la volatilité implicite augmente d’un point."},
   arbitrage:{title:"Absence d’arbitrage",text:"Ensemble de règles qui empêchent une combinaison d’options de produire un gain certain sans risque ni capital."},
-  relative:{title:"Relative value",text:"Comparaison de deux instruments proches pour détecter lequel semble cher ou bon marché relativement à l’autre."}
+  relative:{title:"Relative value",text:"Comparaison de deux instruments proches pour détecter lequel semble cher ou bon marché relativement à l’autre."},
+  realizedVol:{title:"Volatilité réalisée",text:"Amplitude réellement observée dans les variations de prix passées. Ici, elle est annualisée à partir de 20 jours de rendements quotidiens."},
+  har:{title:"Modèle HAR",text:"Modèle de prévision qui combine la volatilité récente, mensuelle et trimestrielle. Il est simple, interprétable et adapté à la persistance de la volatilité."},
+  sample:{title:"Profondeur historique",text:"Durée et nombre d’observations utilisées. Une longue période permet d’inclure plusieurs régimes de marché et plusieurs crises."},
+  spot:{title:"Prix spot",text:"Prix de référence pour une livraison proche. Il ne doit pas être confondu avec le prix d’un contrat future d’une échéance précise."},
+  oos:{title:"Hors échantillon",text:"Période gardée à l’écart pendant l’estimation, puis utilisée pour mesurer la performance sur des données que le modèle n’a pas vues."},
+  proxy:{title:"Proxy",text:"Indicateur approchant une variable qui n’est pas directement disponible. Un proxy est utile, mais ne constitue pas une mesure exacte."}
 };
 
 let state={asset:"WTI",surfaceMode:"heat",view:"overview",axis:"moneyness",model:"SVI"};
+let historicalData=null;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 
@@ -85,9 +92,42 @@ function renderScanner(filter=""){$("#scannerBody").innerHTML=scannerRows.filter
 function updateAll(){
   $("#atmKpi").textContent=state.asset==="WTI"?"31,8 %":"29,6 %";$("#skewKpi").textContent=state.asset==="WTI"?"−4,2 pts":"−3,5 pts";$("#surfaceTitle").textContent=`${state.asset} · Modèle ${state.model}`;
   drawHeatmap($("#surfaceCanvas"),$("#chartTooltip"));drawHeatmap($("#detailSurfaceCanvas"),$("#detailTooltip"));drawHeatmap($("#compareCanvas"),$("#compareTooltip"),"compare");drawLineChart($("#termChart"),"term");drawLineChart($("#smileChart"),"smile");
+  if(historicalData)updateHistory();
 }
 
-function showView(view){state.view=view;$$('.view').forEach(v=>v.classList.remove('active'));$(`#${view}View`).classList.add('active');$$('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.view===view));const titles={overview:"Vue d’ensemble",surface:"Surface implicite",compare:"Brent vs WTI",scanner:"Scanner relative value",learn:"Comprendre"};$("#pageTitle").textContent=titles[view];setTimeout(updateAll,20)}
+function showView(view){state.view=view;$$('.view').forEach(v=>v.classList.remove('active'));$(`#${view}View`).classList.add('active');$$('.nav-item').forEach(n=>n.classList.toggle('active',n.dataset.view===view));const titles={overview:"Vue d’ensemble",history:"Historique réel",surface:"Surface implicite",compare:"Brent vs WTI",scanner:"Scanner relative value",learn:"Comprendre"};$("#pageTitle").textContent=titles[view];setTimeout(updateAll,20)}
+
+function frDate(value){return new Intl.DateTimeFormat('fr-FR',{day:'2-digit',month:'short',year:'numeric'}).format(new Date(`${value}T00:00:00`))}
+function frNumber(value,digits=1){return new Intl.NumberFormat('fr-FR',{minimumFractionDigits:digits,maximumFractionDigits:digits}).format(value)}
+function updateHistory(){
+  const d=historicalData[state.asset];if(!d)return;
+  const years=Math.round((new Date(d.end)-new Date(d.start))/(365.25*864e5));
+  $("#historyCoverage").textContent=`${state.asset} · ${frDate(d.start)} → ${frDate(d.end)}`;
+  $("#dateSelect option").textContent=frDate(d.end);
+  $("#histYears").textContent=`${years} ans`;$("#histDates").textContent=`${frDate(d.start)} → ${frDate(d.end)}`;
+  $("#histPrice").textContent=`$${frNumber(d.latestPrice,2)}`;$("#histObs").textContent=`${new Intl.NumberFormat('fr-FR').format(d.observations)} observations`;
+  $("#histCurrentVol").textContent=`${frNumber(d.currentVol)} %`;$("#histForecast").textContent=`${frNumber(d.forecast5d)} %`;
+  $("#histInterval").textContent=`Intervalle 80 % : ${frNumber(d.interval80[0])}–${frNumber(d.interval80[1])} %`;
+  $("#historyChartTitle").textContent=`${state.asset} · ${years} ans d’historique`;
+  $("#validationPeriod").textContent=`Test : ${d.validation.test} · ${new Intl.NumberFormat('fr-FR').format(d.validation.testObservations)} observations`;
+  const rows=[["HAR 5/22/66 j",d.validation.har,"best"],["Repère naïf 22 j",d.validation.naive,""]];
+  $("#validationBody").innerHTML=rows.map(([name,m,c])=>`<tr class="${c}"><td>${name}</td><td>${frNumber(m.mae,2)}</td><td>${frNumber(m.rmse,2)}</td><td>${frNumber(m.correlation,3)}</td></tr>`).join('');
+  drawHistoryChart(d.history);
+}
+
+function drawHistoryChart(history){
+  const canvas=$("#historyCanvas"),tooltip=$("#historyTooltip"),{ctx,w,h}=setupCanvas(canvas),p={l:50,r:50,t:22,b:40};
+  const prices=history.map(x=>x.p),vols=history.map(x=>x.v),minP=Math.min(...prices),maxP=Math.max(...prices),maxV=Math.max(...vols)*1.05;
+  const x=i=>p.l+i*(w-p.l-p.r)/(history.length-1),yp=v=>p.t+(maxP-v)*(h-p.t-p.b)/(maxP-minP),yv=v=>p.t+(maxV-v)*(h-p.t-p.b)/maxV;
+  ctx.clearRect(0,0,w,h);ctx.font='11px Inter';ctx.fillStyle='#8fa7a1';ctx.strokeStyle='#24403d';ctx.lineWidth=1;
+  for(let i=0;i<5;i++){const yy=p.t+i*(h-p.t-p.b)/4;ctx.beginPath();ctx.moveTo(p.l,yy);ctx.lineTo(w-p.r,yy);ctx.stroke();ctx.textAlign='right';ctx.fillText(`$${(maxP-i*(maxP-minP)/4).toFixed(0)}`,p.l-7,yy+4);ctx.textAlign='left';ctx.fillText(`${(maxV-i*maxV/4).toFixed(0)}%`,w-p.r+7,yy+4)}
+  const draw=(values,y,color,width)=>{ctx.beginPath();values.forEach((v,i)=>i?ctx.lineTo(x(i),y(v)):ctx.moveTo(x(i),y(v)));ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke()};
+  draw(prices,yp,'#94a7a1',1.4);draw(vols,yv,'#b7e64a',2);
+  const tickCount=Math.min(6,history.length);ctx.textAlign='center';ctx.fillStyle='#8fa7a1';for(let i=0;i<tickCount;i++){const idx=Math.round(i*(history.length-1)/(tickCount-1));ctx.fillText(new Date(`${history[idx].d}T00:00:00`).getFullYear(),x(idx),h-14)}
+  canvas.onmousemove=e=>{const r=canvas.getBoundingClientRect(),mx=e.clientX-r.left,idx=clamp(Math.round((mx-p.l)/(w-p.l-p.r)*(history.length-1)),0,history.length-1),d=history[idx];tooltip.hidden=false;tooltip.style.left=`${clamp(mx+12,4,w-190)}px`;tooltip.style.top='38px';tooltip.innerHTML=`<strong>${frDate(d.d)}</strong><span>Prix : $${frNumber(d.p,2)} · Vol. : ${frNumber(d.v)} %</span>`};canvas.onmouseleave=()=>tooltip.hidden=true;
+}
+
+async function loadHistorical(){try{const response=await fetch('historical.json');if(!response.ok)throw new Error(response.status);historicalData=await response.json();updateHistory()}catch(error){$("#historyError").hidden=false;console.error('Historique indisponible',error)}}
 
 $$('.nav-item').forEach(b=>b.addEventListener('click',()=>showView(b.dataset.view)));
 $("#assetSelect").addEventListener('change',e=>{state.asset=e.target.value;updateAll()});
@@ -104,4 +144,4 @@ const glossary=$("#glossaryDialog");function renderGlossary(q=""){$("#glossaryLi
 $$('.open-glossary').forEach(button=>button.addEventListener('click',()=>{renderGlossary();glossary.showModal()}));$("#closeGlossary").addEventListener('click',()=>glossary.close());$("#glossarySearch").addEventListener('input',e=>renderGlossary(e.target.value));
 const drawer=$("#helpDrawer"),backdrop=$("#drawerBackdrop");function closeHelp(){drawer.classList.remove('open');backdrop.classList.remove('open');drawer.setAttribute('aria-hidden','true')}$("#toggleHelp").addEventListener('click',()=>{drawer.classList.add('open');backdrop.classList.add('open');drawer.setAttribute('aria-hidden','false')});$("#closeHelp").addEventListener('click',closeHelp);backdrop.addEventListener('click',closeHelp);
 window.addEventListener('resize',()=>requestAnimationFrame(updateAll));
-renderScanner();updateAll();
+renderScanner();updateAll();loadHistorical();
